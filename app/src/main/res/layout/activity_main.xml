@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <variable
+            name="model"
+            type="com.example.cft_test.MainActivityViewModel" />
+
+        <variable
+            name="valute"
+            type="com.example.cft_test.Valute" />
+
+        <variable
+            name="locale"
+            type="java.util.Locale"/>
+
+    </data>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/rubles_TIL"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:hint="@{valute.charCode == null ? `` : `1 RUB = ` + String.format(locale,`%,.4f`,(((double) valute.nominal) / valute.value)) + ` ` + valute.charCode}"
+            app:counterEnabled="true"
+            app:counterMaxLength="20"
+            app:errorEnabled="true"
+            app:prefixText="RUB"
+            android:digits="0123456789.,">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/rubles_TIET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:digits="0123456789.,"
+                android:inputType="numberDecimal"
+                android:longClickable="false"
+                android:text="@={valute.rublesAmount}"
+                android:imeOptions="flagNoExtractUi"/>
+
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/valute_TIL"
+
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/rubles_TIL"
+            android:layout_margin="10dp"
+            android:hint="@{valute.charCode == null ? `` : valute.nominal + ` ` + valute.charCode  + ` = ` +  String.format(locale, `%,.4f`,(valute.value)) + ` RUB`}"
+            app:endIconDrawable="@drawable/ic_baseline_arrow_drop_down_24"
+            app:endIconMode="custom"
+            app:errorEnabled="true"
+            app:prefixText="@{valute.charCode}">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/valute_TIET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:enabled="false"
+                android:inputType="number"
+                android:text="@{valute.valuteAmount}"
+                android:textColor="@color/black" />
+
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@+id/valute_TIL"
+            android:layout_marginLeft="15dp"
+            android:layout_marginRight="15dp"
+            android:background="@color/rv_background">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/valutes_rv"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="vertical"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    </RelativeLayout>
+
+</layout>
