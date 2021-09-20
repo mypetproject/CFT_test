@@ -195,7 +195,9 @@ public class CurrencyTextWatcher implements TextWatcher {
             if (selectorLastPosition > 3
                     || textBeforeChanged.charAt(selectorLastPosition) == ' '
                     || textBeforeChanged.charAt(selectorLastPosition) == ','
-                    || s.length() < 4) {
+                    || s.length() < 4
+                    || (textBeforeChanged.charAt(1) == ' ' && selectorLastPosition == 3)) {
+
                 ignoreNextIteration = true;
             }
             selectorLastPosition += formatted.length() - textBeforeChanged.length();
