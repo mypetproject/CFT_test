@@ -4,4 +4,5 @@
     <string name="error_max_char">Максимум 20 символов</string>
     <string name="refresh">Обновить</string>
     <string name="data_updated">Данные были обновлены</string>
+    <string name="rub">RUB</string>
 </resources>

@@ -4,6 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.widget.Toast;
 
+import androidx.databinding.Bindable;
+import androidx.databinding.Observable;
+import androidx.databinding.PropertyChangeRegistry;
 import androidx.lifecycle.ViewModel;
 import androidx.preference.PreferenceManager;
 
@@ -14,17 +17,22 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 import io.realm.Realm;
 import io.realm.RealmResults;
 
-public class MainActivityViewModel extends ViewModel {
+public class MainActivityViewModel extends ViewModel implements Observable {
+
+    private PropertyChangeRegistry callbacks = new PropertyChangeRegistry();
 
     final Realm realm = Realm.getDefaultInstance();
     final long MINIMAL_UPDATE_TIME = 60000; // milliseconds
@@ -38,58 +46,147 @@ public class MainActivityViewModel extends ViewModel {
     private int nominal;
     private String name;
     private double value;
-    private String rublesAmount = "1";
+    private String rublesAmount;
+    private String valuteAmount = "";
+
+    private String rublesTILHint;
+    private String valuteTILHint;
+
+    private Locale locale;
 
     SharedPreferences sharedPreferences;
 
     Date lastUpdateDateTime = null;
 
+    @Bindable
     public String getChosenValuteID() {
         return chosenValuteID;
     }
 
     public void setChosenValuteID(String chosenValuteID) {
         this.chosenValuteID = chosenValuteID;
+        notifyPropertyChanged(BR.chosenValuteID);
     }
 
+    @Bindable
     public String getCharCode() {
         return charCode;
     }
 
     public void setCharCode(String charCode) {
         this.charCode = charCode;
+        notifyPropertyChanged(BR.charCode);
     }
 
+    @Bindable
     public int getNominal() {
         return nominal;
     }
 
     public void setNominal(int nominal) {
         this.nominal = nominal;
+        notifyPropertyChanged(BR.nominal);
     }
 
+    @Bindable
     public String getName() {
         return name;
     }
 
     public void setName(String name) {
         this.name = name;
+        notifyPropertyChanged(BR.name);
     }
 
+    @Bindable
     public double getValue() {
         return value;
     }
 
-    public void setValue(float value) {
+    public void setValue(double value) {
         this.value = value;
+        notifyPropertyChanged(BR.value);
     }
 
+    @Bindable
     public String getRublesAmount() {
         return rublesAmount;
     }
 
     public void setRublesAmount(String rublesAmount) {
-        this.rublesAmount = rublesAmount;
+        NumberFormat format = NumberFormat.getInstance(locale);
+
+        try {
+            this.rublesAmount = String.format(locale, "%,.2f", Objects.requireNonNull(format.parse(rublesAmount)).doubleValue());
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        notifyPropertyChanged(BR.rublesAmount);
+    }
+
+
+    @Bindable
+    public String getValuteAmount() {
+        return valuteAmount;
+    }
+
+    public void setValuteAmount() {
+
+        NumberFormat format = NumberFormat.getInstance(locale);
+
+        try {
+            this.valuteAmount = (String.format(locale, "%,.2f", (Objects.requireNonNull(format.parse(rublesAmount)).doubleValue() * nominal / value)));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        if (this.valuteAmount.equals("NaN")) this.valuteAmount = "";
+
+        notifyPropertyChanged(BR.valuteAmount);
+    }
+
+    @Bindable
+    public String getRublesTILHint() {
+
+        return rublesTILHint;
+    }
+
+    public void setRublesTILHint() {
+        this.rublesTILHint = this.charCode == null ?
+                ""
+                : "1 RUB = "
+                + String.format(locale, " %, .4f", (((double) this.nominal) / this.value))
+                + " "
+                + this.charCode;
+
+        notifyPropertyChanged(BR.rublesTILHint);
+    }
+
+    @Bindable
+    public String getValuteTILHint() {
+        return valuteTILHint;
+    }
+
+    public void setValuteTILHint() {
+        this.valuteTILHint = this.charCode == null ?
+                ""
+                : this.nominal
+                + " "
+                + this.charCode
+                + " = "
+                + String.format(locale, "%,.4f", (this.value))
+                + " RUB";
+
+        notifyPropertyChanged(BR.valuteTILHint);
+    }
+
+
+    public Locale getLocale() {
+        return locale;
+    }
+
+    public void setLocale(Locale locale) {
+        this.locale = locale;
     }
 
     public void updateValutesWithDateCheck(Context context, RequestQueue queue) {
@@ -208,17 +305,34 @@ public class MainActivityViewModel extends ViewModel {
         return valutes;
     }
 
-    public void setChosenValutebyName(String chosenValuteName) {
-        this.chosenValuteID = realm.where(ValuteModel.class).equalTo("name", chosenValuteName).findFirst().getId();
+    public void setChosenValuteByName(String chosenValuteName) {
+        setChosenValuteID(realm.where(ValuteModel.class).equalTo("name", chosenValuteName).findFirst().getId());
         setChosenValuteData();
     }
 
     private void setChosenValuteData() {
         ValuteModel valuteModel = realm.where(ValuteModel.class).equalTo("id", chosenValuteID).findFirst();
-        this.charCode = valuteModel.getCharCode();
-        this.nominal = valuteModel.getNominal();
-        this.name = valuteModel.getName();
-        this.value = valuteModel.getValue();
+        setCharCode(valuteModel.getCharCode());
+        setNominal(valuteModel.getNominal());
+        setName(valuteModel.getName());
+        setValue(valuteModel.getValue());
+        setRublesTILHint();
+        setValuteTILHint();
+        setValuteAmount();
+    }
+
+    @Override
+    public void addOnPropertyChangedCallback(OnPropertyChangedCallback callback) {
+        callbacks.add(callback);
+    }
+
+    @Override
+    public void removeOnPropertyChangedCallback(OnPropertyChangedCallback callback) {
+        callbacks.remove(callback);
+    }
+
+    void notifyPropertyChanged(int fieldId) {
+        callbacks.notifyCallbacks(this, fieldId, null);
     }
 
 }

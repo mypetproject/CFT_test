@@ -19,8 +19,6 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 import com.example.cft_test.databinding.ActivityMainBinding;
 
-import java.text.NumberFormat;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -38,7 +36,6 @@ public class MainActivity extends AppCompatActivity {
 
     RecyclerView recyclerView;
     ValuteListAdapter adapter;
-    Valute valute;
 
     Runnable runnable;
     Handler handler = new Handler(Looper.getMainLooper());
@@ -54,15 +51,14 @@ public class MainActivity extends AppCompatActivity {
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
 
         model = new ViewModelProvider(this).get(MainActivityViewModel.class);
-        binding.setModel(model);
-
-
-        model.updateValutesWithDateCheck(this, queue);
 
         setLocale();
 
-        valute = new Valute(model.getChosenValuteID(), model.getCharCode(), model.getNominal(), model.getName(), model.getValue(), model.getRublesAmount(), binding.getLocale());
-        binding.setValute(valute);
+        if (model.getRublesAmount() == null) model.setRublesAmount("1");
+
+        binding.setModel(model);
+
+        model.updateValutesWithDateCheck(this, queue);
 
         setRV();
 
@@ -79,10 +75,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void setLocale() {
         if (Locale.getDefault().toString().equals("ru_RU")) {
-            binding.setLocale(Locale.getDefault());
+            model.setLocale(Locale.getDefault());
         } else {
-            binding.setLocale(Locale.US);
+            model.setLocale(Locale.US);
         }
+
+
     }
 
     @Override
@@ -106,34 +104,18 @@ public class MainActivity extends AppCompatActivity {
             PopupMenu popupMenu = new PopupMenu(v.getContext(), v);
 
             for (String str : valutes) {
-                if (!str.equals(valute.getName())) popupMenu.getMenu().add(str);
+                if (!str.equals(model.getName())) popupMenu.getMenu().add(str);
             }
 
             popupMenu.show();
 
             popupMenu.setOnMenuItemClickListener(item -> {
-                model.setRublesAmount(valute.getRublesAmount());
-                setValute(item.getTitle().toString());
 
+                model.setChosenValuteByName(item.getTitle().toString());
+                setRecyclerViewSelection(item.getTitle().toString());
                 return false;
             });
         });
-    }
-
-    private void setValute(String chosenValute) {
-        model.setChosenValutebyName(chosenValute);
-
-        valute = binding.getValute();
-        valute.setID(model.getChosenValuteID());
-        valute.setValue(model.getValue());
-        valute.setCharCode(model.getCharCode());
-        valute.setName(model.getName());
-        valute.setNominal(model.getNominal());
-        valute.setRublesAmount(model.getRublesAmount());
-
-        setValuteTIET();
-
-        setRecyclerViewSelection(chosenValute);
     }
 
     private void setRecyclerViewSelection(String chosenValute) {
@@ -144,21 +126,6 @@ public class MainActivity extends AppCompatActivity {
         adapter.notifyItemChanged(adapter.selectedPos);
 
         recyclerView.smoothScrollToPosition(valutes.indexOf(chosenValute));
-    }
-
-    public void setValuteTIET() {
-
-        Valute valute = binding.getValute();
-
-        NumberFormat format = NumberFormat.getInstance(binding.getLocale());
-
-        try {
-            valute.setValuteAmount(String.format(binding.getLocale(), "%,.2f", (Objects.requireNonNull(format.parse(valute.getRublesAmount())).doubleValue() * valute.getNominal() / valute.getValue())));
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-
-        if (valute.getValuteAmount().equals("NaN")) valute.setValuteAmount("");
     }
 
     @Override
@@ -195,8 +162,9 @@ public class MainActivity extends AppCompatActivity {
         adapter = new ValuteListAdapter(this, valutes);
 
         adapter.setClickListener((view, position) -> {
-            model.setRublesAmount(valute.getRublesAmount());
-            setValute(valutes.get(position));
+
+            model.setChosenValuteByName(valutes.get(position));
+            setRecyclerViewSelection(valutes.get(position));
         });
 
         recyclerView.setAdapter(adapter);
@@ -212,12 +180,14 @@ public class MainActivity extends AppCompatActivity {
 
         adapter.notifyDataSetChanged();
 
-        if (valute != null) {
-            if (valute.getValuteAmount().equals("") && valutes.size() > 0) {
-                if (valute.getName() == null) {
-                    setValute(valutes.get(0));
+        if (model != null) {
+            if (model.getValuteAmount().equals("") && valutes.size() > 0) {
+                if (model.getName() == null) {
+                    model.setChosenValuteByName(valutes.get(0));
+                    setRecyclerViewSelection(valutes.get(0));
                 } else {
-                    setValute(valute.getName());
+                    model.setChosenValuteByName(model.getName());
+                    setRecyclerViewSelection(model.getName());
                 }
             }
         }
@@ -227,11 +197,4 @@ public class MainActivity extends AppCompatActivity {
         binding.swipeRefresh.setRefreshing(false);
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        model.setRublesAmount(valute.getRublesAmount());
-
-    }
 }
